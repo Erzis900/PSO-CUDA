@@ -9,17 +9,20 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install numpy, 
 pip3 install numpy matplotlib pandas
 ```
 
-## Compilation
+## Building
 
-The CUDA file can be compiled using the NVCC compiler.
+The project can be built using CMake.
 ```bash
-nvcc main.cu -o main
+mkdir build
+cd build
+cmake ..
+cmake --build .
 ```
 
 ## Running
 You can run the program by executing the binary file.
 ```bash
-./main
+./pso
 ```
 The program will generate a data.csv file which can be used to visualize particles' position in each iteration.
 
