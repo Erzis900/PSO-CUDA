@@ -1,109 +1,129 @@
 #include <iostream>
-#include <vector>
 #include <limits>
-#include <math.h>
+#include <curand_kernel.h>
+#include <fstream>
 
-const int LO = -5;
-const int HI = 5;
+const int LO = -10;
+const int HI = 10;
 
-float RandFloat(int LO, int HI)
-{
-    return LO + static_cast<float>(rand()) / ( static_cast<float>(RAND_MAX / (HI-LO)));
-}
+const int swarmSize = 20;
+const int maxIterations = 30;
 
-double Func(double x, double y) 
-{
+const float w = 0.5;
+const float c1 = 1.5;
+const float c2 = 1.5;
+
+// Booth function
+// Global minimum = Func(1, 3) = 0
+__device__ float Func(float x, float y) {
     return pow(x + 2 * y - 7, 2) + pow(2 * x + y - 5, 2);
 }
 
-class Particle
-{
-    public:
-        Particle()
-        {
-            x = RandFloat(LO, HI);
-            y = RandFloat(LO, HI);
-
-            vX = 0;
-            vY = 0;
-
-            pBestX = x;
-            pBestY = y;
-
-            pBest = Func(x, y);
-        }
-
-        void Update(float gBestX, float gBestY, float w, float c1, float c2)
-        {
-            r1 = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-            r2 = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-
-            vX = w * vX + c1 * r1 * (pBestX - x) + c2 * r2 * (gBestX - x);
-            vY = w * vY + c1 * r1 * (pBestY - y) + c2 * r2 * (gBestY - y);
-
-            x += vX;
-            y += vY;
-
-            pBestNew = Func(x, y);
-
-            if (pBestNew < pBest)
-            {
-                pBestX = x;
-                pBestY = y;
-                pBest = pBestNew;
-            }
-        }
-
-        float getX() { return x; }
-        float getY() { return y; }
-        float getPBest() { return pBest; }
-        
-    private:
-        float x, y;
-        float vX, vY;
-
-        float pBestX, pBestY;
-        float pBest;
-
-        float pBestNew;
-
-        float r1, r2;
+struct Particle {
+    float x, y;
+    float vX, vY;
+    float pBestX, pBestY;
+    float pBest;
 };
 
-int main()
-{
-    srand(time(0));
+__global__ void InitRNG(curandState* state, unsigned long long seed) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    curand_init(seed, idx, 0, &state[idx]);
+}
 
-    int swarmSize = 20;
-    int maxIterations = 30;
+__global__ void InitParticles(Particle* d_particles, curandState* state) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < swarmSize) {
+        Particle p;
+        p.x = LO + (HI - LO) * curand_uniform(&state[idx]);
+        p.y = LO + (HI - LO) * curand_uniform(&state[idx]);
+        p.vX = 0;
+        p.vY = 0;
+        p.pBestX = p.x;
+        p.pBestY = p.y;
+        p.pBest = Func(p.x, p.y);
+        d_particles[idx] = p;
+    }
+}
 
-    int w = 0.5;
-    int c1 = 1;
-    int c2 = 2;
+__global__ void Update(Particle* d_particles, curandState* state, int swarmSize, float gBestX, float gBestY) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    std::vector<Particle> swarm(swarmSize);
-    float gBestX = swarm[0].getX();
-    float gBestY = swarm[0].getY();
-    float gBest = std::numeric_limits<float>::max();
+    if (idx < swarmSize) {
+        float r1 = curand_uniform(&state[idx]);
+        float r2 = curand_uniform(&state[idx]);
 
-    for (int i = 0; i < maxIterations; i++) 
-    {
-        for (int j = 0; j < swarmSize; j++)
-        {
-            swarm[j].Update(gBestX, gBestY, w, c1, c2);
+        Particle& p = d_particles[idx];
+        p.vX = w * p.vX + c1 * r1 * (p.pBestX - p.x) + c2 * r2 * (gBestX - p.x);
+        p.vY = w * p.vY + c1 * r1 * (p.pBestY - p.y) + c2 * r2 * (gBestY - p.y);
 
-            if (swarm[j].getPBest() < gBest)
-            {
-                gBestX = swarm[j].getX();
-                gBestY = swarm[j].getY();
-                gBest = swarm[j].getPBest();
-            }
+        p.x += p.vX;
+        p.y += p.vY;
+
+        float pBestNew = Func(p.x, p.y);
+        if (pBestNew < p.pBest) {
+            p.pBestX = p.x;
+            p.pBestY = p.y;
+            p.pBest = pBestNew;
         }
-        std::cout << "Iteration " << i + 1 << " gBest: " << gBest << std::endl;
+    }
+}
+
+__global__ void UpdateBestIndex(Particle* d_particles, int swarmSize, float* gBest, float* gBestX, float* gBestY, int iteration, float* d_positions) {
+    for (int i = 0; i < swarmSize; i++) {
+        if (d_particles[i].pBest < *gBest) {
+            *gBestX = d_particles[i].x;
+            *gBestY = d_particles[i].y;
+            *gBest = d_particles[i].pBest;
+        }
+
+        d_positions[i * 3 + 0] = iteration;
+        d_positions[i * 3 + 1] = d_particles[i].x;
+        d_positions[i * 3 + 2] = d_particles[i].y;
+    }
+}
+
+int main() {
+    curandState* rngState;
+    Particle* d_particles;
+    float gBestX, gBestY, gBest = std::numeric_limits<float>::max();
+    float* d_positions;
+
+    cudaMalloc(&rngState, sizeof(curandState) * swarmSize);
+    cudaMalloc(&d_particles, sizeof(Particle) * swarmSize);
+    cudaMalloc(&d_positions, sizeof(float) * swarmSize * 3);
+
+    int blockSize = 256;
+    int gridSize = (swarmSize + blockSize - 1) / blockSize;
+
+    InitRNG<<<gridSize, blockSize>>>(rngState, clock());
+    InitParticles<<<gridSize, blockSize>>>(d_particles, rngState);
+
+    std::ofstream csvFile("data.csv");
+    csvFile << "Iteration,X,Y\n";
+
+    for (int i = 0; i < maxIterations; i++) {
+        Update<<<gridSize, blockSize>>>(d_particles, rngState, swarmSize, gBestX, gBestY);
+        UpdateBestIndex<<<gridSize, blockSize>>>(d_particles, swarmSize, &gBest, &gBestX, &gBestY, i, d_positions);
+
+        float* h_positions = new float[swarmSize * 3];
+        cudaMemcpy(h_positions, d_positions, sizeof(float) * swarmSize * 3, cudaMemcpyDeviceToHost);
+
+        for (int j = 0; j < swarmSize; j++) {
+            csvFile << h_positions[j * 3 + 0] << "," << h_positions[j * 3 + 1] << "," << h_positions[j * 3 + 2] << "\n";
+        }
+
+        delete[] h_positions;
     }
 
     std::cout << "Final gBest: " << gBest << std::endl;
     std::cout << "Final position: (" << gBestX << ", " << gBestY << ")" << std::endl;
+
+    cudaFree(d_particles);
+    cudaFree(rngState);
+    cudaFree(d_positions);
+
+    csvFile.close();
 
     return 0;
 }
