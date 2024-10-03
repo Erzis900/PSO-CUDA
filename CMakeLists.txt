@@ -36,4 +36,5 @@ set(CMAKE_CUDA_STANDARD_REQUIRED True)
 
 include_directories(include)
 
-add_executable(pso src/kernels.cu src/main.cpp)
+add_executable(pso_cuda src/kernels.cu src/main.cpp)
+add_executable(pso_cpu src/mainCPU.cpp)           

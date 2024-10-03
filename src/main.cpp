@@ -1,6 +1,7 @@
 #include <iostream>
 #include <limits>
 #include <fstream>
+#include <chrono>
 #include "../include/kernels.cuh"
 
 int main() {
@@ -19,11 +20,13 @@ int main() {
     std::ofstream csvFile("../data.csv");
     csvFile << "Iteration,X,Y\n";
 
+    auto t1 = std::chrono::high_resolution_clock::now();
+
     for (int i = 0; i < maxIterations; i++) {
         Wrapper::WUpdate(d_particles, rngState, swarmSize, gBestX, gBestY);
         Wrapper::WUpdateBestIndex(d_particles, swarmSize, &gBest, &gBestX, &gBestY, i, d_positions);
-        
-        float* h_positions = new float[swarmSize * 3];
+
+        float* h_positions = new float[swarmSize * 3]; 
         cudaMemcpy(h_positions, d_positions, sizeof(float) * swarmSize * 3, cudaMemcpyDeviceToHost);
 
         for (int j = 0; j < swarmSize; j++) {
@@ -32,6 +35,11 @@ int main() {
 
         delete[] h_positions;
     }
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+
+    std::cout << "Calculated in: " << duration.count() << " ms" << std::endl;
 
     std::cout << "Final gBest: " << gBest << std::endl;
     std::cout << "Final position: (" << gBestX << ", " << gBestY << ")" << std::endl;

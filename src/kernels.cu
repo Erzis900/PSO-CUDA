@@ -66,6 +66,14 @@ __global__ void UpdateBestIndex(Particle* d_particles, int swarmSize, float* gBe
     }
 }
 
+/*__global__ void UpdateCSV(Particle* d_particles, int swarmSize, int iteration, float* d_positions) {
+    for (int i = 0; i < swarmSize; i++) {
+        d_positions[i * 3 + 0] = iteration;
+        d_positions[i * 3 + 1] = d_particles[i].x;
+        d_positions[i * 3 + 2] = d_particles[i].y;
+    }
+}*/
+
 namespace Wrapper {
 	void WInitRNG(curandState* state, unsigned long long seed) {
 		InitRNG<<<gridSize, blockSize>>>(state, seed);
@@ -82,4 +90,8 @@ namespace Wrapper {
     void WUpdateBestIndex(Particle* d_particles, int swarmSize, float* gBest, float* gBestX, float* gBestY, int iteration, float* d_positions) {
         UpdateBestIndex<<<gridSize, blockSize>>>(d_particles, swarmSize, gBest, gBestX, gBestY, iteration, d_positions);
     }
+
+    /*void WUpdateCSV(Particle* d_particles, int swarmSize, int iteration, float* d_positions) {
+        UpdateCSV<<<1, 1>>>(d_particles, swarmSize, iteration, d_positions);
+    }*/
 }
