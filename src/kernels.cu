@@ -1,6 +1,6 @@
 #include "../include/kernels.cuh"
 
-int blockSize = 256;
+int blockSize = 1024;
 int gridSize = (swarmSize + blockSize - 1) / blockSize;
 
 // Booth function

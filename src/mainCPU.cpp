@@ -9,8 +9,8 @@
 
 const int LO = -10;
 const int HI = 10;
-const int swarmSize = 500;
-const int maxIterations = 1000;
+const int swarmSize = 1000;
+const int maxIterations = 200;
 
 const float w = 0.5f;
 const float c1 = 1.5f;
@@ -61,12 +61,14 @@ int main() {
     std::vector<Particle> particles(swarmSize);
     float gBestX, gBestY, gBest = std::numeric_limits<float>::max();
 
+    int totalUpdate = 0;
+
     std::ofstream csvFile("../data.csv");
     csvFile << "Iteration,X,Y\n";
 
-    auto t1 = std::chrono::high_resolution_clock::now();
-
     for (int i = 0; i < maxIterations; i++) {
+        auto t1 = std::chrono::high_resolution_clock::now();
+
         for (auto& p : particles) {
             p.Update(gBestX, gBestY);
             if (p.pBest < gBest) {
@@ -76,15 +78,21 @@ int main() {
             }
         }
 
+        auto t2 = std::chrono::high_resolution_clock::now();
+        int updateDuration = static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
+
+        totalUpdate += updateDuration;
+
         for (const auto& p : particles) {
             csvFile << i << "," << p.x << "," << p.y << "\n";
         }
     }
 
-    auto t2 = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+    
+    //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 
-    std::cout << "Calculated in: " << duration.count() << " ms" << std::endl;
+    //std::cout << "Calculated in: " << duration.count() << " ms" << std::endl;
+    std::cout << "Calculated in: " << totalUpdate << " microseconds" << std::endl;
     std::cout << "Final gBest: " << gBest << std::endl;
     std::cout << "Final position: (" << gBestX << ", " << gBestY << ")" << std::endl;
 
