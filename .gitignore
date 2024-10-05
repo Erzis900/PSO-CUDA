@@ -33,3 +33,5 @@
 /build
 /.vscode
 data.csv
+/img
+/pso_env

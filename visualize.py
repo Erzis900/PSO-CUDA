@@ -50,6 +50,10 @@ for iteration in range(0, max_iter):
     iteration_data = particle_data[particle_data['Iteration'] == iteration]
     plt.scatter(iteration_data['X'], iteration_data['Y'], color='blue', alpha=0.7, label=f'Particles\' positions')
     
+    gBestX = iteration_data['gBestX'].iloc[-1]
+    gBestY = iteration_data['gBestY'].iloc[-1]
+    plt.scatter(gBestX, gBestY, color='red', marker='x', s=100, label='Global Best Position')
+
     plt.legend()
     plt.grid(color='gray', linestyle='--', linewidth=0.5)
 

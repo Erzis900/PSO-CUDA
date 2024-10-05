@@ -1,6 +1,6 @@
 #include "../include/kernels.cuh"
 
-int blockSize = 1024;
+int blockSize = 128;
 int gridSize = (swarmSize + blockSize - 1) / blockSize;
 
 // Booth function
@@ -60,9 +60,12 @@ __global__ void UpdateBestIndex(Particle* d_particles, int swarmSize, float* gBe
             *gBest = d_particles[i].pBest;
         }
 
-        d_positions[i * 3 + 0] = iteration;
-        d_positions[i * 3 + 1] = d_particles[i].x;
-        d_positions[i * 3 + 2] = d_particles[i].y;
+        d_positions[i * 6 + 0] = iteration;
+        d_positions[i * 6 + 1] = d_particles[i].x;
+        d_positions[i * 6 + 2] = d_particles[i].y;
+        d_positions[i * 6 + 3] = *gBestX;
+        d_positions[i * 6 + 4] = *gBestY;
+        d_positions[i * 6 + 5] = *gBest;
     }
 }
 
@@ -88,7 +91,7 @@ namespace Wrapper {
     }
 
     void WUpdateBestIndex(Particle* d_particles, int swarmSize, float* gBest, float* gBestX, float* gBestY, int iteration, float* d_positions) {
-        UpdateBestIndex<<<gridSize, blockSize>>>(d_particles, swarmSize, gBest, gBestX, gBestY, iteration, d_positions);
+        UpdateBestIndex<<<1,1>>>(d_particles, swarmSize, gBest, gBestX, gBestY, iteration, d_positions);
     }
 
     /*void WUpdateCSV(Particle* d_particles, int swarmSize, int iteration, float* d_positions) {

@@ -6,6 +6,14 @@
 #include "../include/kernels.cuh"
 
 int main() {
+    int deviceId;
+    cudaGetDevice(&deviceId);
+
+    int numberOfSMs;
+    cudaDeviceGetAttribute(&numberOfSMs, cudaDevAttrMultiProcessorCount, deviceId);
+
+    //std::cout << numberOfSMs << std::endl;
+
     curandState* rngState;
     Particle* d_particles;
     float gBestX, gBestY, gBest = std::numeric_limits<float>::max();
@@ -13,15 +21,18 @@ int main() {
 
     cudaMalloc(&rngState, sizeof(curandState) * swarmSize);
     cudaMalloc(&d_particles, sizeof(Particle) * swarmSize);
-    cudaMalloc(&d_positions, sizeof(float) * swarmSize * 3);
+    cudaMalloc(&d_positions, sizeof(float) * swarmSize * 6);
 
     Wrapper::WInitRNG(rngState, clock());
     Wrapper::WInitParticles(d_particles, rngState);
 
     int totalKernels = 0;
 
-    std::vector<std::vector<float>> all_positions(maxIterations, std::vector<float>(swarmSize * 3));
+    std::ofstream csvFile("../data.csv");
+    csvFile << "Iteration,X,Y,gBestX,gBestY,gBest\n";
     
+    std::vector<float> h_positions(swarmSize * 6);
+
     auto t1 = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < maxIterations; i++) {
@@ -35,23 +46,20 @@ int main() {
 
         totalKernels += kernelDuration;
 
-        cudaMemcpy(all_positions[i].data(), d_positions, sizeof(float) * swarmSize * 3, cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_positions.data(), d_positions, sizeof(float) * swarmSize * 6, cudaMemcpyDeviceToHost);
+
+        for (int j = 0; j < swarmSize; j++) {
+            csvFile << h_positions[j * 6 + 0] << ","
+                    << h_positions[j * 6 + 1] << ","
+                    << h_positions[j * 6 + 2] << ","
+                    << h_positions[j * 6 + 3] << ","
+                    << h_positions[j * 6 + 4] << ","
+                    << h_positions[j * 6 + 5] << "\n";
+        }
     }
 
     auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-
-    std::ofstream csvFile("../data.csv");
-    csvFile << "Iteration,X,Y\n";
-    
-    for (int i = 0; i < maxIterations; i++) {
-        for (int j = 0; j < swarmSize; j++) {
-            csvFile
-            << all_positions[i][j * 3 + 0] << ","
-            << all_positions[i][j * 3 + 1] << "," 
-            << all_positions[i][j * 3 + 2] << "\n";
-        }
-    }
 
     //std::cout << "Whole loop with cudaMemcpy executed in: " << duration.count() << " ms" << std::endl;
     std::cout << "Kernels executed in: " << totalKernels << " microseconds" << std::endl;

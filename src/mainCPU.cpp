@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <limits>
-#include <cstdlib>
 #include <ctime>
 #include <chrono>
 #include <cmath>
@@ -9,8 +8,8 @@
 
 const int LO = -10;
 const int HI = 10;
-const int swarmSize = 1000;
-const int maxIterations = 200;
+const int swarmSize = 10;
+const int maxIterations = 100;
 
 const float w = 0.5f;
 const float c1 = 1.5f;
@@ -64,7 +63,7 @@ int main() {
     int totalUpdate = 0;
 
     std::ofstream csvFile("../data.csv");
-    csvFile << "Iteration,X,Y\n";
+    csvFile << "Iteration,X,Y,gBestX,gBestY,gBest\n";
 
     for (int i = 0; i < maxIterations; i++) {
         auto t1 = std::chrono::high_resolution_clock::now();
@@ -84,7 +83,7 @@ int main() {
         totalUpdate += updateDuration;
 
         for (const auto& p : particles) {
-            csvFile << i << "," << p.x << "," << p.y << "\n";
+            csvFile << i << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "\n";
         }
     }
 
