@@ -9,15 +9,34 @@ parser.add_argument('-i', '--iterations', default=None)
 args = parser.parse_args()
 
 # Booth function
-def func(x, y):
-    return (x + 2 * y - 7)**2 + (2 * x + y - 5)**2
+# Global minimum = Func(1, 3) = 0
+def func_booth(x, y):
+    return (x + 2 * y - 7) ** 2 + (2 * x + y - 5) ** 2
+
+# Sphere function
+# Global minimum = Func(0, 0) = 0
+def func_sphere(x, y):
+    return x ** 2 + y ** 2
+
+# Rosenbrock function
+# Global minimum = Func(1, 1) = 0
+def func_rosenbrock(x, y):
+    a = 1.0
+    b = 100.0
+    return (a - x) ** 2 + b * (y - x ** 2) ** 2
+
+# Rastrigin function
+# Global minimum = Func(0, 0) = 0
+def func_rastrigin(x, y):
+    A = 10.0
+    return A * 2 + (x ** 2) + (y ** 2) - A * (np.cos(2 * np.pi * x) + np.cos(2 * np.pi * y))
 
 particle_data = pd.read_csv('data.csv')
 
 x_range = np.linspace(-10, 10, 500)
 y_range = np.linspace(-10, 10, 500)
 x, y = np.meshgrid(x_range, y_range)
-z = func(x, y)
+z = func_booth(x, y)
 
 x_min = x.ravel()[z.argmin()]
 y_min = y.ravel()[z.argmin()]

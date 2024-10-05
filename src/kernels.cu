@@ -5,8 +5,29 @@ int gridSize = (swarmSize + blockSize - 1) / blockSize;
 
 // Booth function
 // Global minimum = Func(1, 3) = 0
-__device__ float Func(float x, float y) {
+__device__ float Func_Booth(float x, float y) {
     return pow(x + 2 * y - 7, 2) + pow(2 * x + y - 5, 2);
+}
+
+// Sphere function
+// Global minimum = Func(0, 0) = 0
+__device__ float Func_Sphere(float x, float y) {
+    return pow(x, 2) + pow(y, 2);
+}
+
+// Rosenbrock function
+// Global minimum = Func(1, 1) = 0
+__device__ float Func_Rosenbrock(float x, float y) {
+    const float a = 1.0f;
+    const float b = 100.0f;
+    return pow(a - x, 2) + b * pow(y - x * x, 2);
+}
+
+// Rastrigin function
+// Global minimum = Func(0, 0) = 0
+__device__ float Func_Rastrigin(float x, float y) {
+    const float A = 10.0f;
+    return A * 2 + (x * x) + (y * y) - A * (cos(2 * M_PI * x) + cos(2 * M_PI * y));
 }
 
 __global__ void InitRNG(curandState* state, unsigned long long seed) {
@@ -14,7 +35,7 @@ __global__ void InitRNG(curandState* state, unsigned long long seed) {
     curand_init(seed, idx, 0, &state[idx]);
 }
 
-__global__ void InitParticles(Particle* d_particles, curandState* state) {
+__global__ void InitParticles(Particle* d_particles, curandState* state, int funcIndex) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < swarmSize) {
         Particle p;
@@ -24,12 +45,30 @@ __global__ void InitParticles(Particle* d_particles, curandState* state) {
         p.vY = 0;
         p.pBestX = p.x;
         p.pBestY = p.y;
-        p.pBest = Func(p.x, p.y);
+
+        switch (funcIndex) {
+            case 0:
+                p.pBest = Func_Booth(p.x, p.y);
+                break;
+            case 1:
+                p.pBest = Func_Sphere(p.x, p.y);
+                break;
+            case 2:
+                p.pBest = Func_Rosenbrock(p.x, p.y);
+                break;
+            case 3:
+                p.pBest = Func_Rastrigin(p.x, p.y);
+                break;
+            default:
+                p.pBest = INFINITY;
+                break;
+        }
+
         d_particles[idx] = p;
     }
 }
 
-__global__ void Update(Particle* d_particles, curandState* state, int swarmSize, float gBestX, float gBestY) {
+__global__ void Update(Particle* d_particles, curandState* state, int swarmSize, float gBestX, float gBestY, int funcIndex) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < swarmSize) {
@@ -43,7 +82,25 @@ __global__ void Update(Particle* d_particles, curandState* state, int swarmSize,
         p.x += p.vX;
         p.y += p.vY;
 
-        float pBestNew = Func(p.x, p.y);
+        float pBestNew;
+        switch (funcIndex) {
+            case 0:
+                pBestNew = Func_Booth(p.x, p.y);
+                break;
+            case 1:
+                pBestNew = Func_Sphere(p.x, p.y);
+                break;
+            case 2:
+                pBestNew = Func_Rosenbrock(p.x, p.y);
+                break;
+            case 3:
+                pBestNew = Func_Rastrigin(p.x, p.y);
+                break;
+            default:
+                pBestNew = INFINITY;
+                break;
+        }
+
         if (pBestNew < p.pBest) {
             p.pBestX = p.x;
             p.pBestY = p.y;
@@ -82,12 +139,12 @@ namespace Wrapper {
 		InitRNG<<<gridSize, blockSize>>>(state, seed);
 	}
 
-    void WInitParticles(Particle* d_particles, curandState* state) {
-        InitParticles<<<gridSize, blockSize>>>(d_particles, state);
+    void WInitParticles(Particle* d_particles, curandState* state, int funcIndex) {
+        InitParticles<<<gridSize, blockSize>>>(d_particles, state, funcIndex);
     }
 
-    void WUpdate(Particle* d_particles, curandState* state, int swarmSize, float gBestX, float gBestY) {
-        Update<<<gridSize, blockSize>>>(d_particles, state, swarmSize, gBestX, gBestY);
+    void WUpdate(Particle* d_particles, curandState* state, int swarmSize, float gBestX, float gBestY, int funcIndex) {
+        Update<<<gridSize, blockSize>>>(d_particles, state, swarmSize, gBestX, gBestY, funcIndex);
     }
 
     void WUpdateBestIndex(Particle* d_particles, int swarmSize, float* gBest, float* gBestX, float* gBestY, int iteration, float* d_positions) {

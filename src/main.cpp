@@ -23,8 +23,10 @@ int main() {
     cudaMalloc(&d_particles, sizeof(Particle) * swarmSize);
     cudaMalloc(&d_positions, sizeof(float) * swarmSize * 6);
 
+    int funcIndex = 0;
+
     Wrapper::WInitRNG(rngState, clock());
-    Wrapper::WInitParticles(d_particles, rngState);
+    Wrapper::WInitParticles(d_particles, rngState, funcIndex);
 
     int totalKernels = 0;
 
@@ -38,7 +40,7 @@ int main() {
     for (int i = 0; i < maxIterations; i++) {
         auto kernelStart = std::chrono::high_resolution_clock::now();
 
-        Wrapper::WUpdate(d_particles, rngState, swarmSize, gBestX, gBestY);
+        Wrapper::WUpdate(d_particles, rngState, swarmSize, gBestX, gBestY, funcIndex);
         Wrapper::WUpdateBestIndex(d_particles, swarmSize, &gBest, &gBestX, &gBestY, i, d_positions);
 
         auto kernelEnd = std::chrono::high_resolution_clock::now();
@@ -46,6 +48,7 @@ int main() {
 
         totalKernels += kernelDuration;
 
+        //cudaMemPrefetchAsync(h_positions.data(), sizeof(float) * swarmSize * 6, deviceId);
         cudaMemcpy(h_positions.data(), d_positions, sizeof(float) * swarmSize * 6, cudaMemcpyDeviceToHost);
 
         for (int j = 0; j < swarmSize; j++) {

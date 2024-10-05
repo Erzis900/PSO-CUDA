@@ -8,12 +8,39 @@
 
 const int LO = -10;
 const int HI = 10;
-const int swarmSize = 10;
+const int swarmSize = 100;
 const int maxIterations = 100;
 
 const float w = 0.5f;
 const float c1 = 1.5f;
 const float c2 = 1.5f;
+
+// Booth function
+// Global minimum = Func(1, 3) = 0
+float Func_Booth(float x, float y) {
+    return pow(x + 2 * y - 7, 2) + pow(2 * x + y - 5, 2);
+}
+
+// Sphere function
+// Global minimum = Func(0, 0) = 0
+float Func_Sphere(float x, float y) {
+    return pow(x, 2) + pow(y, 2);
+}
+
+// Rosenbrock function
+// Global minimum = Func(1, 1) = 0
+float Func_Rosenbrock(float x, float y) {
+    const float a = 1.0f;
+    const float b = 100.0f;
+    return pow(a - x, 2) + b * pow(y - x * x, 2);
+}
+
+// Rastrigin function
+// Global minimum = Func(0, 0) = 0
+float Func_Rastrigin(float x, float y) {
+    const float A = 10.0f;
+    return A * 2 + (x * x) + (y * y) - A * (cos(2 * M_PI * x) + cos(2 * M_PI * y));
+}
 
 struct Particle {
     float x, y;
@@ -28,11 +55,7 @@ struct Particle {
         vY = 0.0f;
         pBestX = x;
         pBestY = y;
-        pBest = Func(x, y);
-    }
-
-    static float Func(float x, float y) {
-        return pow(x + 2 * y - 7, 2) + pow(2 * x + y - 5, 2);
+        pBest = Func_Booth(x, y);
     }
 
     void Update(float gBestX, float gBestY) {
@@ -45,7 +68,7 @@ struct Particle {
         x += vX;
         y += vY;
 
-        float pBestNew = Func(x, y);
+        float pBestNew = Func_Booth(x, y);
         if (pBestNew < pBest) {
             pBestX = x;
             pBestY = y;
