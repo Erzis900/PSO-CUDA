@@ -5,7 +5,7 @@
 #include <vector>
 #include "../include/kernels.cuh"
 
-int main() {
+int main(int argc, char* argv[]) {
     int deviceId;
     cudaGetDevice(&deviceId);
 
@@ -35,9 +35,14 @@ int main() {
     
     std::vector<float> h_positions(swarmSize * 6);
 
+    int numberOfRuns = std::atoi(argv[1]);
+    std::cout << "Number of runs: " << numberOfRuns << std::endl;
+    std::cout << "Running..." << std::endl;
+
     auto t1 = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < maxIterations; i++) {
+        cudaMemPrefetchAsync(h_positions.data(), sizeof(float) * swarmSize * 6, deviceId);
         auto kernelStart = std::chrono::high_resolution_clock::now();
 
         Wrapper::WUpdate(d_particles, rngState, swarmSize, gBestX, gBestY, funcIndex);
@@ -48,7 +53,6 @@ int main() {
 
         totalKernels += kernelDuration;
 
-        //cudaMemPrefetchAsync(h_positions.data(), sizeof(float) * swarmSize * 6, deviceId);
         cudaMemcpy(h_positions.data(), d_positions, sizeof(float) * swarmSize * 6, cudaMemcpyDeviceToHost);
 
         for (int j = 0; j < swarmSize; j++) {
@@ -62,10 +66,10 @@ int main() {
     }
 
     auto t2 = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
     //std::cout << "Whole loop with cudaMemcpy executed in: " << duration.count() << " ms" << std::endl;
-    std::cout << "Kernels executed in: " << totalKernels << " microseconds" << std::endl;
+    std::cout << "Kernels executed in: " << totalKernels / numberOfRuns << " microseconds" << std::endl;
     std::cout << "Final gBest: " << gBest << std::endl;
     std::cout << "Final position: (" << gBestX << ", " << gBestY << ")" << std::endl;
 

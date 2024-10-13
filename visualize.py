@@ -36,7 +36,7 @@ particle_data = pd.read_csv('data.csv')
 x_range = np.linspace(-10, 10, 500)
 y_range = np.linspace(-10, 10, 500)
 x, y = np.meshgrid(x_range, y_range)
-z = func_booth(x, y)
+z = func_sphere(x, y)
 
 x_min = x.ravel()[z.argmin()]
 y_min = y.ravel()[z.argmin()]
@@ -54,12 +54,15 @@ print("Generating " + str(max_iter) + " plots...")
 for iteration in range(0, max_iter):
     print("Generating plot " + str(iteration + 1))
     plt.figure()
-    plt.imshow(z, extent=[-10, 10, -10, 10], cmap='viridis', alpha=0.8)
+    plt.imshow(z, extent=[-10, 10, -10, 10], cmap='viridis', alpha=0.9)
+
+    contour_levels = np.linspace(z.min(), z.max(), 10)  # Set contour levels
+    contours = plt.contour(x, y, z, levels=contour_levels, colors='white', linewidths=0.5)
 
     plt.colorbar(label='Function Value')
     plt.plot(x_min, y_min, 'ko', markersize=6,
              label='Global Minimum')
-    plt.contour(x, y, z, levels=30, colors='white', linewidths=0.8)
+    #plt.contour(x, y, z, levels=30, colors='white', linewidths=0.8)
     plt.title(f'Contour Plot at Iteration {iteration + 1}', fontsize=15)
     plt.xlabel('X')
     plt.ylabel('Y')

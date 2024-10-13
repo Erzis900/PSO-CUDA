@@ -8,7 +8,7 @@
 
 const int LO = -10;
 const int HI = 10;
-const int swarmSize = 100;
+const int swarmSize = 1000;
 const int maxIterations = 100;
 
 const float w = 0.5f;
@@ -77,7 +77,7 @@ struct Particle {
     }
 };
 
-int main() {
+int main(int argc, char* argv[]) {
     std::srand(static_cast<unsigned int>(std::time(0)));
 
     std::vector<Particle> particles(swarmSize);
@@ -88,33 +88,38 @@ int main() {
     std::ofstream csvFile("../data.csv");
     csvFile << "Iteration,X,Y,gBestX,gBestY,gBest\n";
 
-    for (int i = 0; i < maxIterations; i++) {
-        auto t1 = std::chrono::high_resolution_clock::now();
+    int numberOfRuns = std::atoi(argv[1]);
+    std::cout << "Number of runs: " << numberOfRuns << std::endl;
+    std::cout << "Running..." << std::endl;
 
-        for (auto& p : particles) {
-            p.Update(gBestX, gBestY);
-            if (p.pBest < gBest) {
-                gBestX = p.pBestX;
-                gBestY = p.pBestY;
-                gBest = p.pBest;
+    for(int no = 0; no < numberOfRuns; no++) {
+        for (int i = 0; i < maxIterations; i++) {
+            auto t1 = std::chrono::high_resolution_clock::now();
+
+            for (auto& p : particles) {
+                p.Update(gBestX, gBestY);
+                if (p.pBest < gBest) {
+                    gBestX = p.pBestX;
+                    gBestY = p.pBestY;
+                    gBest = p.pBest;
+                }
+            }
+
+            auto t2 = std::chrono::high_resolution_clock::now();
+            int updateDuration = static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
+
+            totalUpdate += updateDuration;
+
+            for (const auto& p : particles) {
+                csvFile << i << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "\n";
             }
         }
-
-        auto t2 = std::chrono::high_resolution_clock::now();
-        int updateDuration = static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
-
-        totalUpdate += updateDuration;
-
-        for (const auto& p : particles) {
-            csvFile << i << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "\n";
-        }
     }
-
     
     //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 
     //std::cout << "Calculated in: " << duration.count() << " ms" << std::endl;
-    std::cout << "Calculated in: " << totalUpdate << " microseconds" << std::endl;
+    std::cout << "Average time: " << totalUpdate / numberOfRuns << " microseconds" << std::endl;
     std::cout << "Final gBest: " << gBest << std::endl;
     std::cout << "Final position: (" << gBestX << ", " << gBestY << ")" << std::endl;
 
