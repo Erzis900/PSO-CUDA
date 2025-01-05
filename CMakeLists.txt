@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
+# SET(CMAKE_BUILD_TYPE "Release")
 project(pso_cpu LANGUAGES CXX CUDA)
 
 option(BUILD_WITH_CUDA "Build with NVidia CUDA" OFF)
@@ -33,6 +34,10 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CUDA_STANDARD 11)
 set(CMAKE_CUDA_STANDARD_REQUIRED True)
+set(CMAKE_CUDA_ARCHITECTURES 75)
+SET(CMAKE_CXX_FLAGS "-std=c++11 -pthread")
+# set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-g -G")
+# set(CUDA_NVCC_FLAGS "-g -G")
 
 include_directories(include)
 

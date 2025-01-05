@@ -8,8 +8,8 @@
 
 const int LO = -10;
 const int HI = 10;
-const int swarmSize = 1000;
-const int maxIterations = 100;
+const int swarmSize = 100000;
+const int maxIterations = 20;
 
 const float w = 0.5f;
 const float c1 = 1.5f;
@@ -77,24 +77,48 @@ struct Particle {
     }
 };
 
+float calc_std_var(std::vector<int> times, float avg)
+{
+    float sum = 0;
+    for (auto &x : times)
+    {
+        sum += std::pow((x - avg), 2);
+    }
+
+    return std::sqrt(sum / times.size());
+}
+
 int main(int argc, char* argv[]) {
     std::srand(static_cast<unsigned int>(std::time(0)));
 
-    std::vector<Particle> particles(swarmSize);
+    //std::vector<Particle> particles(swarmSize);
     float gBestX, gBestY, gBest = std::numeric_limits<float>::max();
 
-    int totalUpdate = 0;
+    // float totalUpdate = 0;
 
     std::ofstream csvFile("../data.csv");
-    csvFile << "Iteration,X,Y,gBestX,gBestY,gBest\n";
+    csvFile << "Iteration,X,Y,gBestX,gBestY,gBest,avgPBest\n";
+
+    float totalGBest, totalGX, totalGY = 0.0f;
+
+    std::vector<int> xn;
+    float updateDuration;
+    float time_n = 0;
 
     int numberOfRuns = std::atoi(argv[1]);
     std::cout << "Number of runs: " << numberOfRuns << std::endl;
+    std::cout << "Swarm size: " << swarmSize << std::endl;
     std::cout << "Running..." << std::endl;
 
     for(int no = 0; no < numberOfRuns; no++) {
+        auto t1 = std::chrono::high_resolution_clock::now();
+
+        float totalPBest = 0.f;
+        gBestX, gBestY, gBest = std::numeric_limits<float>::max();
+
+        std::vector<Particle> particles(swarmSize);
+
         for (int i = 0; i < maxIterations; i++) {
-            auto t1 = std::chrono::high_resolution_clock::now();
 
             for (auto& p : particles) {
                 p.Update(gBestX, gBestY);
@@ -104,24 +128,58 @@ int main(int argc, char* argv[]) {
                     gBest = p.pBest;
                 }
             }
+            // totalUpdate += updateDuration;
 
-            auto t2 = std::chrono::high_resolution_clock::now();
-            int updateDuration = static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
+            // for (auto& p : particles) {
+            //     totalPBest += p.pBest;
+            // }
 
-            totalUpdate += updateDuration;
+            // float avgPBest = totalPBest / swarmSize;
 
-            for (const auto& p : particles) {
-                csvFile << i << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "\n";
-            }
+            // for (auto& p : particles) {
+            //     csvFile << i + 1 << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "," << avgPBest << "\n";
+            // }
+
+            totalPBest = 0;
         }
-    }
+        //std::cout << gBest << std::endl;
+        totalGBest += gBest;
+        totalGX += gBestX;
+        totalGY += gBestY;
+
+        auto t2 = std::chrono::high_resolution_clock::now();
+        updateDuration = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
+        time_n += updateDuration;
+
+        xn.push_back(updateDuration);
+    }   
+
+    // float sum_x = 0;
+    // for (auto &x : xn)
+    // {
+    //     // sum_x += x;
+    //     std::cout << x << ",";
+    // }
+    std::cout << std::endl;
     
+    // float avg_time = totalUpdate / numberOfRuns;
+    float avg_time = time_n / numberOfRuns;
+    float std_var = calc_std_var(xn, avg_time);
+
     //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 
     //std::cout << "Calculated in: " << duration.count() << " ms" << std::endl;
-    std::cout << "Average time: " << totalUpdate / numberOfRuns << " microseconds" << std::endl;
+    std::cout << "Average time: " << avg_time << " ms" << std::endl;
+    std::cout << "Standard deviation: " << std_var << std::endl;
     std::cout << "Final gBest: " << gBest << std::endl;
     std::cout << "Final position: (" << gBestX << ", " << gBestY << ")" << std::endl;
+
+    float averageGBest = totalGBest / numberOfRuns;
+    std::cout << "Average gBest: " << averageGBest << std::endl;
+
+    float averageGX = totalGX / numberOfRuns;
+    float averageGY = totalGY / numberOfRuns;
+    std::cout << "Average position: (" << averageGX << ", " << averageGY << ")" << std::endl;
 
     csvFile.close();
 

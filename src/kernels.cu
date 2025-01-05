@@ -1,6 +1,6 @@
 #include "../include/kernels.cuh"
 
-int blockSize = 128;
+int blockSize = 1024;
 int gridSize = (swarmSize + blockSize - 1) / blockSize;
 
 // Booth function
@@ -36,11 +36,13 @@ __global__ void InitRNG(curandState* state, unsigned long long seed) {
 }
 
 __global__ void InitParticles(Particle* d_particles, curandState* state, int funcIndex) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < swarmSize) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    int stride = blockDim.x * gridDim.x;
+
+    for (int particleNo = idx; particleNo < swarmSize; particleNo += stride) {
         Particle p;
-        p.x = LO + (HI - LO) * curand_uniform(&state[idx]);
-        p.y = LO + (HI - LO) * curand_uniform(&state[idx]);
+        p.x = LO + (HI - LO) * curand_uniform(&state[particleNo]);
+        p.y = LO + (HI - LO) * curand_uniform(&state[particleNo]);
         p.vX = 0;
         p.vY = 0;
         p.pBestX = p.x;
@@ -64,18 +66,20 @@ __global__ void InitParticles(Particle* d_particles, curandState* state, int fun
                 break;
         }
 
-        d_particles[idx] = p;
+        d_particles[particleNo] = p;
     }
 }
 
 __global__ void Update(Particle* d_particles, curandState* state, int swarmSize, float gBestX, float gBestY, int funcIndex) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    int stride = blockDim.x * gridDim.x;
 
-    if (idx < swarmSize) {
-        float r1 = curand_uniform(&state[idx]);
-        float r2 = curand_uniform(&state[idx]);
+    for (int particleNo = idx; particleNo < swarmSize; particleNo += stride) {
+        float r1 = curand_uniform(&state[particleNo]);
+        float r2 = curand_uniform(&state[particleNo]);
 
-        Particle& p = d_particles[idx];
+        Particle& p = d_particles[particleNo];
+
         p.vX = w * p.vX + c1 * r1 * (p.pBestX - p.x) + c2 * r2 * (gBestX - p.x);
         p.vY = w * p.vY + c1 * r1 * (p.pBestY - p.y) + c2 * r2 * (gBestY - p.y);
 
@@ -117,12 +121,40 @@ __global__ void UpdateBestIndex(Particle* d_particles, int swarmSize, float* gBe
             *gBest = d_particles[i].pBest;
         }
 
-        d_positions[i * 6 + 0] = iteration;
-        d_positions[i * 6 + 1] = d_particles[i].x;
-        d_positions[i * 6 + 2] = d_particles[i].y;
-        d_positions[i * 6 + 3] = *gBestX;
-        d_positions[i * 6 + 4] = *gBestY;
-        d_positions[i * 6 + 5] = *gBest;
+        // d_positions[i * 6 + 0] = iteration + 1;
+        // d_positions[i * 6 + 1] = d_particles[i].x;
+        // d_positions[i * 6 + 2] = d_particles[i].y;
+        // d_positions[i * 6 + 3] = *gBestX;
+        // d_positions[i * 6 + 4] = *gBestY;
+        // d_positions[i * 6 + 5] = *gBest;
+    }
+}
+
+__global__ void CalculateAveragePBest(Particle* d_particles, float* avgPBest, int swarmSize) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Each thread accumulates its pBest
+    float localSum = 0.0f;
+    if (idx < swarmSize) {
+        localSum = d_particles[idx].pBest;
+    }
+
+    // Use shared memory to sum pBest values within a block
+    __shared__ float sharedSum[1024]; // Adjust based on your block size
+    sharedSum[threadIdx.x] = localSum;
+    __syncthreads();
+
+    // Reduction to sum the shared pBest values
+    for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+        if (threadIdx.x < stride) {
+            sharedSum[threadIdx.x] += sharedSum[threadIdx.x + stride];
+        }
+        __syncthreads();
+    }
+
+    // Write the block's total to global memory
+    if (threadIdx.x == 0) {
+        atomicAdd(avgPBest, sharedSum[0]);
     }
 }
 
@@ -149,6 +181,10 @@ namespace Wrapper {
 
     void WUpdateBestIndex(Particle* d_particles, int swarmSize, float* gBest, float* gBestX, float* gBestY, int iteration, float* d_positions) {
         UpdateBestIndex<<<1,1>>>(d_particles, swarmSize, gBest, gBestX, gBestY, iteration, d_positions);
+    }
+
+    void WCalculateAveragePBest(Particle* d_particles, float* d_avgPBest, int swarmSize) {
+        CalculateAveragePBest<<<gridSize, blockSize>>>(d_particles, d_avgPBest, swarmSize);
     }
 
     /*void WUpdateCSV(Particle* d_particles, int swarmSize, int iteration, float* d_positions) {
