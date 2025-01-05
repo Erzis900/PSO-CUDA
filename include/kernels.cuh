@@ -2,7 +2,7 @@
 
 const int LO = -10;
 const int HI = 10;
-const int swarmSize = 20000;
+const int swarmSize = 150;
 const int maxIterations = 20;
 
 const float w = 0.5f;

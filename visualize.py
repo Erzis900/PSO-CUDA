@@ -1,85 +1,84 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
 import os
 import argparse
 
+# Set up argument parser
 parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--iterations', default=None)
+parser.add_argument('-i', '--iterations', type=int, help='Number of iterations to generate plots for')
 args = parser.parse_args()
 
-# Booth function
-# Global minimum = Func(1, 3) = 0
+# Load particle data from CSV
+data = pd.read_csv('data.csv')
+
+# Get unique iterations
+all_iterations = data['Iteration'].unique()
+
+# Determine which iterations to plot
+if args.iterations is not None:
+    iterations = np.unique(all_iterations)[:args.iterations]
+else:
+    iterations = all_iterations
+
+# Create a directory for saving plots
+output_dir = 'particle_progression_plots'
+if not os.path.exists(output_dir):
+    os.mkdir(output_dir)
+
+# Function to generate the surface for contour plotting
 def func_booth(x, y):
     return (x + 2 * y - 7) ** 2 + (2 * x + y - 5) ** 2
 
-# Sphere function
-# Global minimum = Func(0, 0) = 0
-def func_sphere(x, y):
-    return x ** 2 + y ** 2
-
-# Rosenbrock function
-# Global minimum = Func(1, 1) = 0
-def func_rosenbrock(x, y):
-    a = 1.0
-    b = 100.0
-    return (a - x) ** 2 + b * (y - x ** 2) ** 2
-
-# Rastrigin function
-# Global minimum = Func(0, 0) = 0
 def func_rastrigin(x, y):
-    A = 10.0
-    return A * 2 + (x ** 2) + (y ** 2) - A * (np.cos(2 * np.pi * x) + np.cos(2 * np.pi * y))
+    A = 10
+    return A * 2 + (x * x) + (y * y) - A * (np.cos(2 * np.pi * x) + np.cos(2 * np.pi * y))
 
-particle_data = pd.read_csv('data.csv')
-
+# Prepare grid for function values
 x_range = np.linspace(-10, 10, 500)
 y_range = np.linspace(-10, 10, 500)
 x, y = np.meshgrid(x_range, y_range)
-z = func_sphere(x, y)
+z = func_rastrigin(x, y)
 
-x_min = x.ravel()[z.argmin()]
-y_min = y.ravel()[z.argmin()]
+# Create the contour levels
+contour_levels = np.linspace(z.min(), z.max(), 10)
 
-if not os.path.exists('img'):
-    os.mkdir('img')
+global_min_x = 0
+global_min_y = 0
 
-if args.iterations == None:
-    max_iter = len(particle_data['Iteration'].unique())
-else:
-    max_iter = int(args.iterations)
-
-print("Generating " + str(max_iter) + " plots...")
-
-for iteration in range(0, max_iter):
-    print("Generating plot " + str(iteration + 1))
-    plt.figure()
-    plt.imshow(z, extent=[-10, 10, -10, 10], cmap='viridis', alpha=0.9)
-
-    contour_levels = np.linspace(z.min(), z.max(), 10)  # Set contour levels
-    contours = plt.contour(x, y, z, levels=contour_levels, colors='white', linewidths=0.5)
-
+# Iterate over the specified iterations
+for iteration in iterations:
+    iteration_data = data[data['Iteration'] == iteration]
+    
+    plt.figure(figsize=(10, 8))
+    
+    # Create a contour plot
+    plt.contourf(x, y, z, levels=contour_levels, alpha=0.7)
     plt.colorbar(label='Function Value')
-    plt.plot(x_min, y_min, 'ko', markersize=6,
-             label='Global Minimum')
-    #plt.contour(x, y, z, levels=30, colors='white', linewidths=0.8)
-    plt.title(f'Contour Plot at Iteration {iteration + 1}', fontsize=15)
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.xlim(-10, 10)
-    plt.ylim(-10, 10)
-    
-    iteration_data = particle_data[particle_data['Iteration'] == iteration]
-    plt.scatter(iteration_data['X'], iteration_data['Y'], color='blue', alpha=0.7, label=f'Particles\' positions')
-    
-    gBestX = iteration_data['gBestX'].iloc[-1]
-    gBestY = iteration_data['gBestY'].iloc[-1]
-    plt.scatter(gBestX, gBestY, color='red', marker='x', s=100, label='Global Best Position')
 
+    # Plot each particle's position
+    for index in range(iteration_data.shape[0]):
+        plt.scatter(iteration_data['X'].iloc[index], iteration_data['Y'].iloc[index], color='yellow', s=100, alpha=0.6, label='Particles' if index == 0 else "")
+    
+    # Plot the global best position
+    
+    # Plot the global minimum
+    plt.scatter(global_min_x, global_min_y, color='white', marker='o', s=100, label='Global Minimum')
+    plt.scatter(iteration_data['gBestX'].iloc[-1], iteration_data['gBestY'].iloc[-1], color='red', marker='x', s=100, label='Global Best Position')
+
+    plt.title(f'Particle Positions at Iteration {iteration}')
+    plt.xlabel('X Position')
+    plt.ylabel('Y Position')
+    plt.xlim([-10, 10])  # Adjust according to your function's range
+    plt.ylim([-10, 10])
     plt.legend()
-    plt.grid(color='gray', linestyle='--', linewidth=0.5)
+    # plt.grid()
 
-    plt.savefig(f'img/contour_plot_iteration_{iteration + 1}.png', bbox_inches='tight')
+    print("Saving plot " + str(iteration))
+
+    # Save the figure
+    # plt.savefig(f'{output_dir}/iteration_{iteration}.eps', format='eps', dpi=1200)
+    plt.savefig(f'{output_dir}/iteration_{iteration}.png')
     plt.close()
-    
-print("Plots saved to 'img' directory")
+
+print("Particle progression plots saved in 'particle_progression_plots' directory.")

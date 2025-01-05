@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
 
     float totalGBest, totalGX, totalGY = 0.0f;
 
-    int funcIndex = 2;
+    int funcIndex = 3;
 
     curandState* rngState;
     float gBestX, gBestY, gBest = std::numeric_limits<float>::max();
@@ -112,6 +112,10 @@ int main(int argc, char* argv[]) {
             Wrapper::WUpdate(d_particles, rngState, swarmSize, gBestX, gBestY, funcIndex);
             // Wrapper::WCalculateAveragePBest(d_particles, d_avgPBest, swarmSize);
             Wrapper::WUpdateBestIndex(d_particles, swarmSize, &gBest, &gBestX, &gBestY, i, d_positions);
+            // cudaDeviceSynchronize();
+            // std::cout << gBest << std::endl;
+
+            // std::cout << i << " gBest: " << gBest << std::endl;
 
             // float h_avgPBest = 0;
             // cudaMemcpy(&h_avgPBest, d_avgPBest, sizeof(float), cudaMemcpyDeviceToHost);
@@ -132,7 +136,6 @@ int main(int argc, char* argv[]) {
             //             << h_avgPBest << "\n";
             // }
         }
-
         totalGBest += gBest;
         totalGX += gBestX;
         totalGY += gBestY;
@@ -182,6 +185,7 @@ int main(int argc, char* argv[]) {
     float avg_whole_run = time_whole_n / numberOfRuns;
     float std_whole_var = calc_std_var(xn_whole, avg_whole_run);
 
+    // std::cout << "Average optimization time: " << avg_whole_run << " ms" << std::endl;
     std::cout << "Average optimization time: " << avg_whole_run << " microseconds" << std::endl;
     std::cout << "Standard deviation of optimization time: " << std_whole_var << std::endl;
     // std::cout << "Average kernel execution time: " << avg_time << " microseconds" << std::endl;
@@ -195,6 +199,11 @@ int main(int argc, char* argv[]) {
     float averageGX = totalGX / numberOfRuns;
     float averageGY = totalGY / numberOfRuns;
     std::cout << "Average position: (" << averageGX << ", " << averageGY << ")" << std::endl;
+
+    std::ofstream timeFile("../time_gpu.csv", std::ios::app);
+    timeFile << swarmSize << "," << avg_whole_run << "," << std_whole_var << "\n";
+
+    timeFile.close();
 
     csvFile.close();
 

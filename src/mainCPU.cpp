@@ -8,8 +8,8 @@
 
 const int LO = -10;
 const int HI = 10;
-const int swarmSize = 100000;
-const int maxIterations = 20;
+const long int swarmSize = 20;
+const int maxIterations = 40;
 
 const float w = 0.5f;
 const float c1 = 1.5f;
@@ -55,7 +55,7 @@ struct Particle {
         vY = 0.0f;
         pBestX = x;
         pBestY = y;
-        pBest = Func_Booth(x, y);
+        pBest = Func_Rastrigin(x, y);
     }
 
     void Update(float gBestX, float gBestY) {
@@ -68,7 +68,7 @@ struct Particle {
         x += vX;
         y += vY;
 
-        float pBestNew = Func_Booth(x, y);
+        float pBestNew = Func_Rastrigin(x, y);
         if (pBestNew < pBest) {
             pBestX = x;
             pBestY = y;
@@ -130,15 +130,15 @@ int main(int argc, char* argv[]) {
             }
             // totalUpdate += updateDuration;
 
-            // for (auto& p : particles) {
-            //     totalPBest += p.pBest;
-            // }
+            for (auto& p : particles) {
+                totalPBest += p.pBest;
+            }
 
-            // float avgPBest = totalPBest / swarmSize;
+            float avgPBest = totalPBest / swarmSize;
 
-            // for (auto& p : particles) {
-            //     csvFile << i + 1 << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "," << avgPBest << "\n";
-            // }
+            for (auto& p : particles) {
+                csvFile << i + 1 << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "," << avgPBest << "\n";
+            }
 
             totalPBest = 0;
         }
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
         totalGY += gBestY;
 
         auto t2 = std::chrono::high_resolution_clock::now();
-        updateDuration = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
+        updateDuration = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
         time_n += updateDuration;
 
         xn.push_back(updateDuration);
@@ -169,7 +169,8 @@ int main(int argc, char* argv[]) {
     //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 
     //std::cout << "Calculated in: " << duration.count() << " ms" << std::endl;
-    std::cout << "Average time: " << avg_time << " ms" << std::endl;
+    // std::cout << "Average time: " << avg_time << " ms" << std::endl;
+    std::cout << "Average optimization time: " << avg_time << " microseconds" << std::endl;
     std::cout << "Standard deviation: " << std_var << std::endl;
     std::cout << "Final gBest: " << gBest << std::endl;
     std::cout << "Final position: (" << gBestX << ", " << gBestY << ")" << std::endl;
@@ -181,6 +182,10 @@ int main(int argc, char* argv[]) {
     float averageGY = totalGY / numberOfRuns;
     std::cout << "Average position: (" << averageGX << ", " << averageGY << ")" << std::endl;
 
+    std::ofstream timeFile("../time_cpu.csv", std::ios::app);
+    timeFile << swarmSize << "," << avg_time << "," << std_var << "\n";
+
+    timeFile.close();
     csvFile.close();
 
     return 0;

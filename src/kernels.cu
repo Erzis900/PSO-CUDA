@@ -65,7 +65,6 @@ __global__ void InitParticles(Particle* d_particles, curandState* state, int fun
                 p.pBest = INFINITY;
                 break;
         }
-
         d_particles[particleNo] = p;
     }
 }

@@ -37,3 +37,7 @@ data.csv
 /pso_env
 *.png
 /CMakeFiles
+/copies
+/particle_progression_plots
+*.csv
+visualizeex.py
