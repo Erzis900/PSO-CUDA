@@ -5,7 +5,7 @@
 #include <vector>
 #include "../include/kernels.cuh"
 
-float calc_std_var(std::vector<int> times, float avg)
+float calc_std_var(std::vector<float> times, float avg)
 {
     float sum = 0;
     for (auto &x : times)
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
     //std::cout << numberOfSMs << std::endl;
 
     float time_whole_n = 0;
-    std::vector<int> xn_whole;
+    std::vector<float> xn_whole;
 
     float duration = 0;
 
@@ -75,10 +75,25 @@ int main(int argc, char* argv[]) {
 
     int funcIndex = 3;
 
+    // case 0:
+    //     p.pBest = Func_Booth(p.x, p.y);
+    //     break;
+    // case 1:
+    //     p.pBest = Func_Sphere(p.x, p.y);
+    //     break;
+    // case 2:
+    //     p.pBest = Func_Rosenbrock(p.x, p.y);
+    //     break;
+    // case 3:
+    //     p.pBest = Func_Rastrigin(p.x, p.y);
+    //     break;
+
     curandState* rngState;
     float gBestX, gBestY, gBest = std::numeric_limits<float>::max();
     float* d_positions;
     float* d_avgPBest;
+
+    std::vector<float> gBests;
 
     int numberOfRuns = std::atoi(argv[1]);
     std::cout << "Number of runs: " << numberOfRuns << std::endl;
@@ -112,8 +127,7 @@ int main(int argc, char* argv[]) {
             Wrapper::WUpdate(d_particles, rngState, swarmSize, gBestX, gBestY, funcIndex);
             // Wrapper::WCalculateAveragePBest(d_particles, d_avgPBest, swarmSize);
             Wrapper::WUpdateBestIndex(d_particles, swarmSize, &gBest, &gBestX, &gBestY, i, d_positions);
-            // cudaDeviceSynchronize();
-            // std::cout << gBest << std::endl;
+            cudaDeviceSynchronize();
 
             // std::cout << i << " gBest: " << gBest << std::endl;
 
@@ -139,6 +153,7 @@ int main(int argc, char* argv[]) {
         totalGBest += gBest;
         totalGX += gBestX;
         totalGY += gBestY;
+        gBests.push_back(gBest);
 
         // cudaFree(d_particles);
         // cudaFree(rngState);
@@ -150,6 +165,7 @@ int main(int argc, char* argv[]) {
         {
             // xn.push_back(time_n);
             // time_n = 0;   
+            // std::cout << gBest << std::endl;
 
             duration = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
             time_whole_n += duration;
@@ -162,7 +178,6 @@ int main(int argc, char* argv[]) {
             cudaFree(d_avgPBest);
         }
     }
-
     // float sum_x = 0;
     // for (auto &x : xn)
     // {
@@ -195,6 +210,7 @@ int main(int argc, char* argv[]) {
 
     float averageGBest = totalGBest / numberOfRuns;
     std::cout << "Average gBest: " << averageGBest << std::endl;
+    std::cout << "gBest std var: " << calc_std_var(gBests, averageGBest) << std::endl;
 
     float averageGX = totalGX / numberOfRuns;
     float averageGY = totalGY / numberOfRuns;

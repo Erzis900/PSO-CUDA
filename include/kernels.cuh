@@ -2,8 +2,8 @@
 
 const int LO = -10;
 const int HI = 10;
-const int swarmSize = 150;
-const int maxIterations = 20;
+const int swarmSize = 1000;
+const int maxIterations = 40;
 
 const float w = 0.5f;
 const float c1 = 1.5f;

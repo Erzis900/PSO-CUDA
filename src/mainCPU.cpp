@@ -8,7 +8,7 @@
 
 const int LO = -10;
 const int HI = 10;
-const long int swarmSize = 20;
+const int swarmSize = 1000;
 const int maxIterations = 40;
 
 const float w = 0.5f;
@@ -55,7 +55,7 @@ struct Particle {
         vY = 0.0f;
         pBestX = x;
         pBestY = y;
-        pBest = Func_Rastrigin(x, y);
+        pBest = Func_Sphere(x, y);
     }
 
     void Update(float gBestX, float gBestY) {
@@ -68,7 +68,7 @@ struct Particle {
         x += vX;
         y += vY;
 
-        float pBestNew = Func_Rastrigin(x, y);
+        float pBestNew = Func_Sphere(x, y);
         if (pBestNew < pBest) {
             pBestX = x;
             pBestY = y;
@@ -77,7 +77,7 @@ struct Particle {
     }
 };
 
-float calc_std_var(std::vector<int> times, float avg)
+float calc_std_var(std::vector<float> times, float avg)
 {
     float sum = 0;
     for (auto &x : times)
@@ -101,9 +101,11 @@ int main(int argc, char* argv[]) {
 
     float totalGBest, totalGX, totalGY = 0.0f;
 
-    std::vector<int> xn;
+    std::vector<float> xn;
     float updateDuration;
     float time_n = 0;
+
+    std::vector<float> gBests;
 
     int numberOfRuns = std::atoi(argv[1]);
     std::cout << "Number of runs: " << numberOfRuns << std::endl;
@@ -130,18 +132,19 @@ int main(int argc, char* argv[]) {
             }
             // totalUpdate += updateDuration;
 
-            for (auto& p : particles) {
-                totalPBest += p.pBest;
-            }
+            // for (auto& p : particles) {
+            //     totalPBest += p.pBest;
+            // }
 
-            float avgPBest = totalPBest / swarmSize;
+            // float avgPBest = totalPBest / swarmSize;
 
-            for (auto& p : particles) {
-                csvFile << i + 1 << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "," << avgPBest << "\n";
-            }
+            // for (auto& p : particles) {
+            //     csvFile << i + 1 << "," << p.x << "," << p.y << "," << gBestX << "," << gBestY << "," << gBest << "," << avgPBest << "\n";
+            // }
 
             totalPBest = 0;
         }
+        gBests.push_back(gBest);
         //std::cout << gBest << std::endl;
         totalGBest += gBest;
         totalGX += gBestX;
@@ -177,6 +180,7 @@ int main(int argc, char* argv[]) {
 
     float averageGBest = totalGBest / numberOfRuns;
     std::cout << "Average gBest: " << averageGBest << std::endl;
+    std::cout << "gBest std var: " << calc_std_var(gBests, averageGBest) << std::endl;
 
     float averageGX = totalGX / numberOfRuns;
     float averageGY = totalGY / numberOfRuns;

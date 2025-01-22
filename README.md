@@ -1,5 +1,6 @@
 # PSO-CUDA
- Particle Swarm Optimization algorithm in CUDA
+ Particle Swarm Optimization algorithm in CUDA.
+ Built on Ubuntu 24.04.
 
 ## Installation
 
@@ -20,9 +21,15 @@ cmake --build .
 ```
 
 ## Running
-You can run the program by executing the binary file.
+You can run the programs by executing their binary files. The binary files take the number of runs as argument. If you want to run the script once, execute:
+
+CPU implementation:
 ```bash
-./pso
+./pso_cpu 1
+```
+GPU implementation
+```bash
+./pso_cuda 1
 ```
 The program will generate a data.csv file which can be used to visualize particles' position in each iteration.
 
